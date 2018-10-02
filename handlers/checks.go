@@ -9,9 +9,8 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	humanize "github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize"
 	"github.com/gojp/goreportcard/check"
-	"github.com/gojp/goreportcard/download"
 )
 
 type notFoundError struct {
@@ -86,25 +85,6 @@ type checksResp struct {
 }
 
 func newChecksResp(repo string, forceRefresh bool) (checksResp, error) {
-	if !forceRefresh {
-		resp, err := getFromCache(repo)
-		if err != nil {
-			// just log the error and continue
-			log.Println(err)
-		} else {
-			resp.Grade = grade(resp.Average * 100) // grade is not stored for some repos, yet
-			return resp, nil
-		}
-	}
-
-	// fetch the repo and grade it
-	repoRoot, err := download.Download(repo, "_repos/src")
-	if err != nil {
-		return checksResp{}, fmt.Errorf("could not clone repo: %v", err)
-	}
-
-	repo = repoRoot.Root
-
 	dir := dirName(repo)
 	filenames, skipped, err := check.GoFiles(dir)
 	if err != nil {
@@ -128,7 +108,7 @@ func newChecksResp(repo string, forceRefresh bool) (checksResp, error) {
 		check.License{Dir: dir, Filenames: []string{}},
 		check.Misspell{Dir: dir, Filenames: filenames},
 		check.IneffAssign{Dir: dir, Filenames: filenames},
-		// check.ErrCheck{Dir: dir, Filenames: filenames}, // disable errcheck for now, too slow and not finalized
+		//check.ErrCheck{Dir: dir, Filenames: filenames}, // disable errcheck for now, too slow and not finalized
 	}
 
 	ch := make(chan score)
@@ -155,7 +135,7 @@ func newChecksResp(repo string, forceRefresh bool) (checksResp, error) {
 	t := time.Now().UTC()
 	resp := checksResp{
 		Repo:                 repo,
-		ResolvedRepo:         repoRoot.Repo,
+		ResolvedRepo:         repo,
 		Files:                len(filenames),
 		LastRefresh:          t,
 		LastRefreshFormatted: t.Format(time.UnixDate),
